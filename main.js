@@ -1,11 +1,7 @@
-let a = 1;
-let b = 2;
-let c = x++ - ++y + 1;
-let d = 5;
-// a++;
-// ++b;
-// c--;
-// --d;
-console.log(a);
-console.log(b);
-console.log(c);
+let x = 1;
+let y = 2;
+let z = x++ - ++y + 1;
+
+console.log(x);
+console.log(y);
+console.log(z);
