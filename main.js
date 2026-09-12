@@ -1,0 +1,12 @@
+let a = 5;
+let b = 5;
+let c = 5;
+let d = 5;
+a++;
+++b;
+c--;
+--d;
+console.log(a);
+console.log(b);
+console.log(c);
+console.log(d);
