@@ -1,147 +1,177 @@
 import { useState } from "react";
 import {
   Search,
-  MapPin,
-  Thermometer,
   Droplets,
   Wind,
-  Loader2,
-  AlertCircle,
+  Cloud,
+  Sun,
+  CloudRain,
+  CloudLightning,
+  CloudSnow,
 } from "lucide-react";
 import "./App.css";
 
+const getWeatherDetails = (code) => {
+  if (code === 0)
+    return {
+      text: "Clear Sky",
+      type: "sunny",
+      icon: <Sun size={84} className="anim-sun" />,
+    };
+  if ([1, 2, 3].includes(code))
+    return {
+      text: "Few Clouds",
+      type: "cloudy",
+      icon: <Cloud size={84} className="anim-cloud" />,
+    };
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code))
+    return {
+      text: "Rain Showers",
+      type: "rainy",
+      icon: <CloudRain size={84} className="anim-rain" />,
+    };
+  if ([71, 73, 75, 85, 86].includes(code))
+    return {
+      text: "Snow Fall",
+      type: "snowy",
+      icon: <CloudSnow size={84} className="anim-snow" />,
+    };
+  if ([95, 96, 99].includes(code))
+    return {
+      text: "Thunderstorm",
+      type: "storm",
+      icon: <CloudLightning size={84} className="anim-storm" />,
+    };
+  return {
+    text: "Overcast",
+    type: "cloudy",
+    icon: <Cloud size={84} className="anim-cloud" />,
+  };
+};
+
 function App() {
-  const [cityName, setCityName] = useState("");
-  const [weatherData, setWeatherData] = useState(null);
+  const [city, setCity] = useState("Hanoi");
+  const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
 
-  const searchWeather = async () => {
-    if (!cityName.trim()) return;
-
+  const fetchWeather = async () => {
+    if (!city.trim()) return;
     setLoading(true);
-    setErrorMsg("");
-    setWeatherData(null);
-
     try {
-      // 1. Geocoding API: Tên -> Tọa độ
-      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=vi&format=json`;
-      const geoRes = await fetch(geoUrl);
+      const geoRes = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`,
+      );
       const geoData = await geoRes.json();
 
       if (!geoData.results || geoData.results.length === 0) {
-        setErrorMsg("Không tìm thấy địa điểm. Vui lòng kiểm tra lại chính tả.");
+        alert("Không tìm thấy thành phố!");
         setLoading(false);
         return;
       }
 
-      const place = geoData.results[0];
-      const { latitude, longitude, name, country } = place;
+      const { latitude, longitude, name, country } = geoData.results[0];
+      const weatherRes = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m`,
+      );
+      const weatherData = await weatherRes.json();
+      const current = weatherData.current;
 
-      // 2. Weather API: Tọa độ -> Số liệu
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m`;
-      const weatherRes = await fetch(weatherUrl);
-      const weatherDataRes = await weatherRes.json();
-
-      setWeatherData({
-        location: `${name}${country ? `, ${country}` : ""}`,
-        temp: Math.round(weatherDataRes.current.temperature_2m),
-        humidity: weatherDataRes.current.relative_humidity_2m,
-        wind: weatherDataRes.current.wind_speed_10m,
+      setWeather({
+        name: `${name}, ${country || ""}`,
+        temp: Math.round(current.temperature_2m),
+        humidity: current.relative_humidity_2m,
+        wind: current.wind_speed_10m,
+        ...getWeatherDetails(current.weather_code),
       });
-    } catch (error) {
-      console.error(error);
-      setErrorMsg("Lỗi mạng kết nối đến máy chủ thời tiết.");
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi tải dữ liệu!");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="app-container">
-      <div className="weather-card">
-        <header className="card-header">
-          <h2>Hệ Thống Quan Trắc</h2>
-          <span className="badge">Trực Tuyến</span>
-        </header>
+  const weatherType = weather ? weather.type : "default";
 
-        {/* Thanh tìm kiếm tiêu chuẩn */}
-        <div className="search-bar">
+  return (
+    <div className={`viewport-container ${weatherType}`}>
+      {/* HỆ THỐNG HIỆU ỨNG HẠT ĐỘNG (PARTICLES) */}
+      {weatherType === "rainy" && (
+        <div className="rain-layer">
+          {[...Array(20)].map((_, i) => (
+            <span
+              key={i}
+              className="drop"
+              style={{ left: `${i * 5}%`, animationDelay: `${(i % 5) * 0.2}s` }}
+            ></span>
+          ))}
+        </div>
+      )}
+
+      {weatherType === "snowy" && (
+        <div className="snow-layer">
+          {[...Array(20)].map((_, i) => (
+            <span
+              key={i}
+              className="snowflake"
+              style={{ left: `${i * 5}%`, animationDelay: `${(i % 7) * 0.3}s` }}
+            >
+              ❄
+            </span>
+          ))}
+        </div>
+      )}
+
+      {weatherType === "sunny" && <div className="sun-ray"></div>}
+
+      {/* THẺ DỰ BÁO TRUNG TÂM */}
+      <div className="weather-card">
+        <div className="search-box">
           <input
             type="text"
             placeholder="Nhập tên thành phố..."
-            value={cityName}
-            onChange={(e) => setCityName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && searchWeather()}
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && fetchWeather()}
           />
-          <button onClick={searchWeather} disabled={loading} title="Tìm kiếm">
+          <button onClick={fetchWeather} disabled={loading}>
             <Search size={18} />
           </button>
         </div>
 
-        {/* Khu vực hiển thị thông tin & Trạng thái */}
-        <div className="display-area">
-          {loading && (
-            <div className="state-message">
-              <Loader2 className="spinner" size={28} />
-              <p>Đang truy vấn vệ tinh...</p>
-            </div>
-          )}
+        {weather && (
+          <div className="weather-content">
+            <div className="icon-stage">{weather.icon}</div>
+            <h1 className="temperature">
+              {weather.temp}°<span className="unit">C</span>
+            </h1>
+            <h2 className="location-name">{weather.name}</h2>
+            <p className="weather-status">{weather.text}</p>
 
-          {errorMsg && (
-            <div className="state-message error">
-              <AlertCircle size={24} />
-              <p>{errorMsg}</p>
-            </div>
-          )}
-
-          {!loading && weatherData && (
-            <div className="weather-info">
-              <div className="location-tag">
-                <MapPin size={16} />
-                <span>{weatherData.location}</span>
-              </div>
-
-              <div className="main-temp">
-                <h1>
-                  {weatherData.temp}°<span>C</span>
-                </h1>
-              </div>
-
-              <div className="metrics-grid">
-                <div className="metric-box">
-                  <Thermometer size={18} className="metric-icon" />
-                  <div>
-                    <span className="label">Nhiệt độ</span>
-                    <span className="val">{weatherData.temp}°C</span>
-                  </div>
+            <div className="stats-container">
+              <div className="stat-card">
+                <Droplets size={26} className="stat-icon cyan" />
+                <div>
+                  <div className="stat-value">{weather.humidity}%</div>
+                  <div className="stat-name">Độ ẩm</div>
                 </div>
-
-                <div className="metric-box">
-                  <Droplets size={18} className="metric-icon" />
-                  <div>
-                    <span className="label">Độ ẩm</span>
-                    <span className="val">{weatherData.humidity}%</span>
-                  </div>
-                </div>
-
-                <div className="metric-box">
-                  <Wind size={18} className="metric-icon" />
-                  <div>
-                    <span className="label">Sức gió</span>
-                    <span className="val">{weatherData.wind} km/h</span>
-                  </div>
+              </div>
+              <div className="stat-card">
+                <Wind size={26} className="stat-icon green" />
+                <div>
+                  <div className="stat-value">{weather.wind} km/h</div>
+                  <div className="stat-name">Tốc độ gió</div>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {!loading && !weatherData && !errorMsg && (
-            <div className="state-message empty">
-              <p>Chưa có dữ liệu. Vui lòng nhập địa danh để bắt đầu tra cứu.</p>
-            </div>
-          )}
-        </div>
+        {!weather && !loading && (
+          <p className="empty-hint">
+            Gõ tên thành phố rồi bấm tìm kiếm để quan sát
+          </p>
+        )}
       </div>
     </div>
   );
